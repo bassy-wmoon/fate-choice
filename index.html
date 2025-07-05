@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>運命の選択</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+
+        .input-section {
+            margin-bottom: 30px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        textarea {
+            width: 100%;
+            height: 120px;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+
+        .start-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: block;
+            margin: 0 auto 30px;
+            min-width: 120px;
+        }
+
+        .start-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255,107,107,0.4);
+        }
+
+        .start-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .roulette-container {
+            display: grid;
+            gap: 15px;
+            margin-bottom: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        }
+
+        .choice-item {
+            background: #f8f9fa;
+            border: 3px solid #e9ecef;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .choice-item.active {
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            border-color: #ffd700;
+            color: #333;
+            transform: scale(1.05);
+            box-shadow: 0 10px 20px rgba(255,215,0,0.3);
+        }
+
+        .choice-item.winner {
+            background: linear-gradient(45deg, #4ecdc4, #44a08d);
+            border-color: #4ecdc4;
+            color: white;
+            transform: scale(1.1);
+            box-shadow: 0 15px 30px rgba(78,205,196,0.4);
+            animation: winner-pulse 1s ease-in-out infinite alternate;
+        }
+
+        @keyframes winner-pulse {
+            0% { transform: scale(1.1); }
+            100% { transform: scale(1.15); }
+        }
+
+        .result-section {
+            text-align: center;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .result-section.show {
+            display: block;
+        }
+
+        .result-text {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .result-choice {
+            font-size: 32px;
+            font-weight: bold;
+            color: #4ecdc4;
+            margin-bottom: 20px;
+        }
+
+        .reset-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .reset-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102,126,234,0.4);
+        }
+
+        .instructions {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔮 運命の選択</h1>
+        
+        <div class="instructions">
+            💡 選択肢を一行ずつ入力してください。例：今日やる、明日やる、やらない
+        </div>
+
+        <div class="input-section">
+            <label for="choices">選択肢を入力してください（一行に一つずつ）：</label>
+            <textarea id="choices" placeholder="今日やる&#10;明日やる&#10;やらない"></textarea>
+        </div>
+
+        <button class="start-btn" id="startBtn">🎲 ルーレット開始</button>
+
+        <div class="roulette-container" id="rouletteContainer">
+            <!-- 選択肢がここに表示されます -->
+        </div>
+
+        <div class="result-section" id="resultSection">
+            <div class="result-text">🎉 結果発表 🎉</div>
+            <div class="result-choice" id="resultChoice"></div>
+            <button class="reset-btn" id="resetBtn">もう一度</button>
+        </div>
+    </div>
+
+    <script>
+        let choices = [];
+        let isRunning = false;
+        let currentIndex = 0;
+        let intervalId;
+
+        const choicesTextarea = document.getElementById('choices');
+        const startBtn = document.getElementById('startBtn');
+        const rouletteContainer = document.getElementById('rouletteContainer');
+        const resultSection = document.getElementById('resultSection');
+        const resultChoice = document.getElementById('resultChoice');
+        const resetBtn = document.getElementById('resetBtn');
+
+        // 選択肢を表示
+        function displayChoices() {
+            const input = choicesTextarea.value.trim();
+            if (!input) {
+                rouletteContainer.innerHTML = '<p style="text-align: center; color: #666;">選択肢を入力してください</p>';
+                return;
+            }
+
+            choices = input.split('\n').filter(choice => choice.trim() !== '');
+            if (choices.length < 2) {
+                rouletteContainer.innerHTML = '<p style="text-align: center; color: #666;">2つ以上の選択肢を入力してください</p>';
+                return;
+            }
+
+            rouletteContainer.innerHTML = '';
+            choices.forEach((choice, index) => {
+                const choiceElement = document.createElement('div');
+                choiceElement.className = 'choice-item';
+                choiceElement.textContent = choice.trim();
+                choiceElement.dataset.index = index;
+                rouletteContainer.appendChild(choiceElement);
+            });
+        }
+
+        // ルーレット開始
+        function startRoulette() {
+            if (choices.length < 2) {
+                alert('2つ以上の選択肢を入力してください');
+                return;
+            }
+
+            isRunning = true;
+            startBtn.disabled = true;
+            startBtn.textContent = '🎲 実行中...';
+            resultSection.classList.remove('show');
+
+            // 全ての選択肢をリセット
+            const choiceElements = document.querySelectorAll('.choice-item');
+            choiceElements.forEach(el => {
+                el.classList.remove('active', 'winner');
+            });
+
+            let speed = 100; // 初期速度
+            let rounds = 0;
+            const maxRounds = 3 + Math.floor(Math.random() * 3); // 3-5周
+            let currentRound = 0;
+
+            function animate() {
+                // 前の選択肢を非アクティブに
+                choiceElements.forEach(el => el.classList.remove('active'));
+
+                // 現在の選択肢をアクティブに
+                choiceElements[currentIndex].classList.add('active');
+
+                currentIndex = (currentIndex + 1) % choices.length;
+
+                // 1周完了したらラウンドを増やす
+                if (currentIndex === 0) {
+                    currentRound++;
+                }
+
+                // 最終ラウンドで徐々に速度を落とす
+                if (currentRound >= maxRounds) {
+                    speed *= 1.2;
+                    
+                    // 十分遅くなったら停止
+                    if (speed > 500) {
+                        stopRoulette();
+                        return;
+                    }
+                }
+
+                setTimeout(animate, speed);
+            }
+
+            animate();
+        }
+
+        // ルーレット停止
+        function stopRoulette() {
+            isRunning = false;
+            startBtn.disabled = false;
+            startBtn.textContent = '🎲 ルーレット開始';
+
+            // 全ての選択肢を非アクティブに
+            const choiceElements = document.querySelectorAll('.choice-item');
+            choiceElements.forEach(el => el.classList.remove('active'));
+
+            // 最終的な選択肢を決定（現在のindexの前の要素）
+            const winnerIndex = currentIndex === 0 ? choices.length - 1 : currentIndex - 1;
+            const winner = choices[winnerIndex];
+
+            // 勝者をハイライト
+            choiceElements[winnerIndex].classList.add('winner');
+
+            // 結果を表示
+            resultChoice.textContent = winner;
+            resultSection.classList.add('show');
+
+            // 勝者に少し遅れて効果音的な効果
+            setTimeout(() => {
+                choiceElements[winnerIndex].style.transform = 'scale(1.2)';
+                setTimeout(() => {
+                    choiceElements[winnerIndex].style.transform = 'scale(1.1)';
+                }, 200);
+            }, 500);
+        }
+
+        // リセット
+        function reset() {
+            currentIndex = 0;
+            resultSection.classList.remove('show');
+            const choiceElements = document.querySelectorAll('.choice-item');
+            choiceElements.forEach(el => {
+                el.classList.remove('active', 'winner');
+                el.style.transform = '';
+            });
+        }
+
+        // イベントリスナー
+        choicesTextarea.addEventListener('input', displayChoices);
+        startBtn.addEventListener('click', startRoulette);
+        resetBtn.addEventListener('click', reset);
+
+        // 初期表示
+        displayChoices();
+    </script>
+</body>
+</html>
